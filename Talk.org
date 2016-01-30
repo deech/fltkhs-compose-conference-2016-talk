@@ -1,0 +1,578 @@
+#+TITLE: FLTKHS - Easy Native GUIs in Haskell, Today!
+#+AUTHOR: Aditya Siram (@deech)
+#+OPTIONS: H:1 toc:f
+#+LATEX_CLASS: beamer
+#+LATEX_listingsCLASS_OPTIONS: [presentation]
+#+BEAMER_THEME: Madrid
+
+* What
+- FLTK (Fast Light Toolkit)
+- C++
+  - No multiple inheritance
+  - No exceptions
+  - No templates
+- Stable, 20 yrs old
+- Clean install on Win/Linux/Mac
+- Embedded systems
+  - Almost no dependencies
+  - Not even glibc!
+  - Static zero-dependency binaries
+- Fluid Interface Builder
+* What
+- Native GUI's in pure, impure Haskell
+  - All in IO.
+- Near Complete Integration With Fluid
+  - Fluid interfaces compile to straight Haskell!
+* Why
+ - Installs easily
+  - Yes, Windows too
+ - Very few dependencies
+  - base, bytestring, directory, filepath,mtl, parsec, c2hs
+ - Zero-dependency binaries
+  - Yes, Windows too
+* Why
+ - Easy To Learn™
+ - Add a 3rd party widget
+  - Without recompiling!
+  - Type-safe, no =unsafeCoerce=!
+* Easy
+ - What is "easy"?
+  - Re-use existing FLTK documentation
+  - Find function & datatypes
+  - Straightforward translation of C++ to Haskell
+  - Ape the API
+ - What is /not/ "easy"?
+  - Pure, functional Haskell
+* Easy
+ - Widget names
+  - =Fl_Widget= is =Ref Widget=
+  - =Fl_Light_Button= is =Ref LightButton=
+ - Widget Construction
+  - =new Fl_Widget(..)= is =newWidget ...=
+  - =new Fl_Light_Button(..)= is =newLightButton ...=
+* Easy
+ - Function names are the same as much as possible
+ - In FLTK
+  - Type Sig
+    #+BEGIN_SRC haskell
+      void Fl_Valuator::bounds(double a, double b)
+    #+END_SRC
+  - Call
+    #+BEGIN_SRC haskell
+      valuatorRef->bounds(1.0, 10.0)
+    #+END_SRC
+ - In FLTKHS
+  #+BEGIN_SRC haskell
+    bounds valuatorRef 1.0 10.0
+  #+END_SRC
+* Easy
+ - Getters/Setters prefixed with get/set
+ - In C++
+  - Type sig
+     #+BEGIN_SRC haskell
+     double Fl_Valuator::value()
+     void Fl_Valuator::value(double v)
+     #+END_SRC
+  - Call
+    #+BEGIN_SRC haskell
+      double v = valuatorRef->value()
+      valuatorRef->value(1.0)
+    #+END_SRC
+ - In Haskell
+  #+BEGIN_SRC haskell
+  v <- getValue valuatorRef
+  setValue valuatorRef 1.0
+  #+END_SRC
+* Easy
+ - All FLTKHS methods have multiple dispatch!
+ - In C++
+  #+BEGIN_SRC haskell
+  int Fl_Input_::value(const char* str, int len)
+  #+END_SRC
+ - In Haskell
+  #+BEGIN_SRC haskell
+  setValue :: Ref Input -> String -> Maybe Int -> IO (Int)
+  #+END_SRC
+  - Not the real signature!
+ - Previously it was:
+  #+BEGIN_SRC haskell
+  setValue :: Ref Valuator -> Double -> IO ()
+  #+END_SRC
+ - Rest of the arguments depend on the first!
+* Easy
+ - Error messages are decent too!
+ - Missing arguments
+  #+BEGIN_SRC haskell
+  setValue inputRef
+  #+END_SRC
+ - Error message
+  #+BEGIN_SRC haskell
+  Couldn't match type ‘IO t0’ with \
+      ‘String -> Maybe Int -> IO Int’
+    In a stmt of a 'do' block: setValue inputRef
+  #+END_SRC
+* Easy
+ - Missing everything
+  #+BEGIN_SRC haskell
+  setValue
+  #+END_SRC
+ - Less nice, but not horrible
+  #+BEGIN_SRC haskell
+    Couldn't match expected type ‘IO t0’
+                with actual type ‘Ref a0 -> impl0’
+    Probable cause: ‘setValue’ is applied to too \
+      few arguments
+  #+END_SRC
+* Easy
+ - Wrong widget (a table does not have a =setValue=)
+  #+BEGIN_SRC haskell
+  setValue tableRef
+  #+END_SRC
+ - Ugly, the info is there but ...
+  #+BEGIN_SRC haskell
+    Couldn't match type \
+      ‘NoFunction
+         (SetValue ())
+         (Graphics.UI.FLTK.LowLevel.Hierarchy.CTable Group)’
+      with ‘Match r0’
+  #+END_SRC
+ - GHC 8's custom type errors will help here
+* Easy
+ - Real type sigs. are ugly
+ - All widget docs show methods with friendly sigs!
+  [[file:value-input-functions.png]]
+ - It's all clickable.
+* Easy
+ - And also the widget hierarchy
+  #+ATTR_LATEX: :width 0.6\linewidth
+  [[file:value-input-hierarchy.png]]
+ - Parent's functions transparently available!
+* Easy
+ - =fltkhs-demos= comes with 18 end-to-end demos
+ - 16 are exact copies of demos that ship with FLTK
+ - Learn by side-by-side comparison
+* Easy
+ - Browser demo (see select menu on bottom left)
+  #+ATTR_LATEX: :width 0.85\linewidth
+  [[file:browser.png]]
+* Easy
+ - C++ and Haskell code that handles select menu callback.
+ - Don't worry about details, note the correspondence.
+* Easy
+ - C++ code
+  #+BEGIN_SRC haskell
+    void btype_cb(Fl_Widget *, void *) {
+      for ( int t=1; t<=browser->size(); t++ )
+        browser->select(t,0);
+      browser->select(1,0);   // leave focus box on first line
+           if ( strcmp(btype->text(),"Normal")==0)
+              browser->type(FL_NORMAL_BROWSER);
+      else if ( strcmp(btype->text(),"Select")==0)
+              browser->type(FL_SELECT_BROWSER);
+      else if ( strcmp(btype->text(),"Hold"  )==0)
+              browser->type(FL_HOLD_BROWSER);
+      else if ( strcmp(btype->text(),"Multi" )==0)
+              browser->type(FL_MULTI_BROWSER);
+      browser->redraw();
+    }
+  #+END_SRC
+* Easy
+ - Equivalent Haskell code
+  #+BEGIN_SRC haskell
+  btypeCb :: Ref SelectBrowser -> Ref Choice -> IO ()
+  btypeCb browser' btype' = do
+   numLines' <- getSize browser'
+   forM_ [1..(numLines' - 1)]
+     (\l -> select browser' l False)
+   _ <- select browser' 1 False -- leave focus box on first line
+   choice' <- getText btype'
+   case choice' of
+    "Normal" -> setType browser' NormalBrowserType
+    "Select" -> setType browser' SelectBrowserType
+    "Hold" -> setType browser' HoldBrowserType
+    "Multi" -> setType browser' MultiBrowserType
+    _ -> return ()
+   redraw browser'
+  #+END_SRC
+* Easy
+ - C++
+  #+BEGIN_SRC haskell
+    for ( int t=1; t<=browser->size(); t++ )
+      browser->select(t,0);
+    browser->select(1,0);   // leave focus box on first line
+  #+END_SRC
+ - Haskell
+  #+BEGIN_SRC haskell
+    numLines' <- getSize browser'
+    forM_ [1..(numLines' - 1)]
+      (\l -> select browser' l False)
+    _ <- select browser' 1 False -- leave focus box on first line
+  #+END_SRC
+ - Comments are preserved!
+* Easy
+ - C++
+  #+BEGIN_SRC haskell
+         if ( strcmp(btype->text(),"Normal")==0)
+            browser->type(FL_NORMAL_BROWSER);
+    else if ( strcmp(btype->text(),"Select")==0)
+            browser->type(FL_SELECT_BROWSER);
+    ...
+  #+END_SRC
+ - Haskell
+  #+BEGIN_SRC haskell
+    choice' <- getText btype'
+    case choice' of
+     "Normal" -> setType browser' NormalBrowserType
+     "Select" -> setType browser' SelectBrowserType
+     ...
+     _ -> return ()
+  #+END_SRC
+* Easy
+ - Callstacks!
+  - Out-of-the-box in 7.10.x
+ - All FLTKHS "instance" methods check for a null =Ref=.
+* Easy
+ - Deletes itself in callback ...
+  #+BEGIN_SRC haskell
+    buttonCb b' = do
+      FL.deleteWidget b'
+      l' <- getLabel b'
+      ...
+    main = do
+     ...
+     b' <- buttonNew ...
+     setCallback b' buttonCb
+     ...
+  #+END_SRC
+* Easy
+ - Callstack ...
+#+BEGIN_SRC haskell
+  Ref does not exist. \
+    ?loc, called at <full-path>/Fl_Types.chs:395:58 in ...
+    toRefPtr, called at <full-path>/Fl_Types.chs:403:22 in ...
+    withRef, called at <full-path>/Hierarchy.hs:1652:166 in ...
+    getLabel, called at src/Main.hs:11:10 in main:Main
+#+END_SRC
+* Easy
+ - Project skeleton available:
+  =http://github.com/deech/fltkhs-hello-world=
+* Fluid
+ - A full fledged, mature GUI builder
+ - Ships with FLTK
+ - Out-of-the-box integration with FLTKHS
+* Fluid
+ - Designed to generate C++
+ - Now generates Haskell!
+  - =fltkhs-fluidtohs= ships with FLTKHS
+ - Migrate existing C++ projects easily
+  - =fltkhs-fluid-examples=
+ - Skeleton project available.
+  - =https://github.com/deech/fltkhs-fluid-hello-world=
+* Fluid
+ - Project structure
+  #+BEGIN_SRC haskell
+    + fltkhs-fluid-hello-world
+      - ...
+      + src
+         - Callbacks.hs
+         - fluid-hello-world.hs
+         - HelloWorld.fl
+  #+END_SRC
+ - Installing
+  #+BEGIN_SRC haskell
+  > cabal install
+  #+END_SRC
+ - Running
+  #+BEGIN_SRC haskell
+  > fltkhs-fluid-hello-world
+  #+END_SRC
+* Fluid
+*** Unclicked
+#+ATTR_LATEX: :width 0.6\linewidth
+[[file:fluid-hello-unclicked.png]]
+* Fluid
+*** Clicking
+#+ATTR_LATEX: :width 0.6\linewidth
+[[file:fluid-hello-clicking.png]]
+* Fluid
+*** Clicked
+#+ATTR_LATEX: :width 0.6\linewidth
+[[file:fluid-hello-clicked.png]]
+* Fluid
+#+BEGIN_SRC haskell
+      > fluid HelloWorld.fl
+#+END_SRC
+#+ATTR_LATEX: :width 0.8\linewidth
+[[file:fluid-hello-main.png]]
+* Fluid
+*** Widget Bin
+#+ATTR_LATEX: :width 0.8\linewidth
+[[file:fluid-hello-widget-bin.png]]
+* Fluid
+*** Window properties
+#+ATTR_LATEX: :width 0.6\linewidth
+[[file:fluid-hello-window-properties.png]]
+* Fluid
+*** Set the button callback.
+[[file:fluid-hello-button-properties.png]]
+* Fluid
+ - Callback logic
+  #+BEGIN_SRC haskell
+  module Callbacks where
+  ...
+  buttonCb :: Ref Button -> IO ()
+  buttonCb helloWorld = do
+    l' <- getLabel helloWorld
+    if (l' == "Hello World")
+      then setLabel helloWorld "Goodbye World"
+      else setLabel helloWorld "Hello World"
+  #+END_SRC
+* Fluid
+*** Imports
+#+ATTR_LATEX: :width 0.8\linewidth
+[[file:fluid-hello-import.png]]
+* Fluid
+ - Main Module
+  #+BEGIN_SRC haskell
+  main = do
+    window <- make_window
+    _ <- showWidget window
+    _ <- FL.run
+    return ()
+  #+END_SRC
+* Fluid
+The type signature is inside the parens.
+*** Window Creating Function
+#+ATTR_LATEX: :width 0.8\linewidth
+[[file:fluid-hello-make-window.png]]
+* Fluid
+*** Return Type
+#+ATTR_LATEX: :width 0.7\linewidth
+[[file:fluid-hello-return-window.png]]
+* Fluid
+ - Preprocess Fluid Files in `Setup.hs`
+  #+BEGIN_SRC haskell
+    main :: IO ()
+    main = defaultMainWithHooks
+            (simpleUserHooks {
+                hookedPreProcessors =
+                 [("fl", ppFluidToHaskell)]})
+    ppFluidToHaskell = ...
+  #+END_SRC
+* Fluid
+*** The Main UI
+#+ATTR_LATEX: :width 0.7\linewidth
+[[file:fluid-hello-window-click.png]]
+* Fluid
+ - Fluid Intermediate Format
+  #+BEGIN_SRC haskell
+  ...
+  decl {import Callbacks} {private local}
+  Function {make_window(IO(Ref Window))} {open
+  } {
+    Fl_Window main_window {open
+      xywh {815 469 200 125} type Double hide
+    } {
+      Fl_Button hello_world_button {
+        label {Hello World}
+        callback buttonCb selected
+        xywh {30 30 150 40}
+      }
+    }
+    code {return main_window} {}
+  }
+  #+END_SRC
+* Fluid
+ - Haskell output
+  #+BEGIN_SRC haskell
+    module HelloWorld where
+    ...
+    import Callbacks
+    make_window :: IO(Ref Window)
+    make_window = do {
+      main_window <-
+          windowNew (Size (Width 200) (Height 125)) ..;
+      begin main_window;
+      hello_world_button <-
+          buttonNew (toRectangle (30,30,150,40)) ...;
+      setLabel hello_world_button "Hello World";
+      setCallback hello_world_button buttonCb;
+      end main_window;
+      return main_window;
+     }
+  #+END_SRC
+* Fluid Extras
+ - Capable of complicated UI's.
+  - =fltkhs-fluid-tree= in =fltkhs-fluid-examples=
+    [[file:fluid-tree.png]]
+* Fluid Extras
+ - Can add functions directly in Fluid!
+* Fluid Extras
+ - The =fltkhs-fluid-valuators= demo, for example
+  #+ATTR_LATEX: :width 0.7\linewidth
+  [[file:fluid-valuators.png]]
+* Fluid Extras
+ - Callback function in Fluid
+  #+ATTR_LATEX: :width 0.7\linewidth
+  [[file:fluid-callback-function-signature.png]]
+  - =valuator= is the function argument
+  - Super hacky, I know.
+* Fluid Extras
+ - Callback function body
+  [[file:fluid-callback-function-body.png]]
+* Fluid Extras
+ - Final output
+  #+BEGIN_SRC haskell
+  module Valuators where
+  ...
+  callback :: (Parent a Valuator) => Ref a -> IO ()
+  callback valuator =
+     do {
+      v <- getValue (safeCast valuator :: Ref Valuator);
+      print ((show v) ++ "    \\r");;
+    }
+  ...
+  make_window :: IO (Ref Window)
+  make_window  =  ...
+  #+END_SRC
+* The bad ...
+ - Compile times aren't great
+ - compile + link: 11-15 secs, REPL: 9 secs
+  #+ATTR_LATEX: :width 0.9\linewidth
+  [[file:fluid-tree.png]]
+* wxHaskell
+ - Very elegant model for multiple dispatch!
+ - At the base:
+   #+BEGIN_SRC haskell
+     data Object a = Object (Ptr a)
+   #+END_SRC
+ - A child of =Object=:
+   #+BEGIN_SRC haskell
+     data CWidget a = CWidget
+     type Widget a = Object (CWidget a)
+   #+END_SRC
+ - "=type Widget a=" -> "=Object (Ptr (CWidget a))="
+ - A child of =Widget=:
+   #+BEGIN_SRC haskell
+     data CWindow a = CWindow
+     type Window a = Widget (CWindow a)
+   #+END_SRC
+ - "=type Window a=" -> "=Object (Ptr (CWidget (CWindow a)))="
+* wxHaskell
+ - A function that takes a "=Widget a="
+  #+BEGIN_SRC haskell
+  print :: Widget a                           -> IO ()
+  print :: Object (Ptr (CWidget a          )) -> IO ()
+  #+END_SRC
+ - Also accepts a "=Window a="!
+  #+BEGIN_SRC haskell
+  print :: Object (Ptr (CWidget (CWindow a))) -> IO ()
+  #+END_SRC
+* wxHaskell
+ - Extensible without recompiling!
+  #+BEGIN_SRC haskell
+  data CMyWindow a = CMyWindow
+  type MyWindow a = Window (CMyWindow a)
+  #+END_SRC
+ - No typeclasses!
+ - Haskell 98?
+ - Awesome!
+* wxHaskell
+ - Can't handle changing arities.
+  - eg. =setValue= -> =inputSetValue= / =valuatorSetValue=
+ - I went all in ...
+ - Compile times were great.
+ - More and more inconsistent method calls
+* Depression
+ - Couldn't stand my own API.
+ - Depression.
+ - Walked away for months ...
+* HList
+ - Turned to HLists
+  #+BEGIN_SRC haskell
+  data CObject parent; type Object = CObject ()
+  data CWidget parent; type Widget = CWidget Object
+  data CWindow parent; type Window = CWindow Widget
+  #+END_SRC
+ - "=type Window=" -> "=CWindow (CWidget (CObject ()))="
+* HList
+ - A Hlist for functions too ...
+  #+BEGIN_SRC haskell
+  data SetValue a
+  data Print a
+  class Functions object functions
+  instance Functions Widget (SetValue (Print ()))
+  instance Functions Window (SetValue (Print ()))
+  #+END_SRC
+ - An instance for each implementation ...
+  #+BEGIN_SRC haskell
+  class Impl function object impl where
+     run :: function -> (Ref object) -> impl
+  instance Impl (SetValue ()) (Widget ()) \
+    (String -> IO ()) ...
+  instance Impl (SetValue ()) (Window ()) \
+    (Int -> Int -> IO ())
+  #+END_SRC
+* HList
+ - a function to delegate ...
+   #+BEGIN_SRC haskell
+   setValue :: (FindFunction (SetValue ()) a impl) =>
+               Ref a -> impl
+   #+END_SRC
+ - =FindFunction= also searches down the hierarchy.
+ - Essentially what's there now ...
+   - Slightly different in the codebase
+* HList
+ - Gives me multiple dispatch
+ - Litters the codebase with orphan instances
+ - More complicated
+* Transition
+ - Huge transition
+[[file:github-1.png]]
+
+[[file:github-2.png]]
+
+[[file:github-3.png]]
+
+[[file:github-4.png]]
+* HList
+ - Up the =context-stack=
+ - But smooth sailing ...
+
+* HList
+ - And then few months later ...
+  #+ATTR_LATEX: :width 0.6\linewidth
+  [[file:fluid-tree.png]]
+ - compile + link: 12-15 minutes!
+ - Hello Darkness, my old friend ...
+* HList
+ - =cabal build -v3= with a stop watch.
+  - Can hez type-level profiler?
+  - Half the time was spent in the =simplifier= phase
+ - Set some flags
+  #+BEGIN_SRC haskell
+  ghc-Options: -fno-specialise \
+               -fmax-simplifier-iterations=0 \
+               -fsimplifier-phases=0
+  #+END_SRC
+ - 5 minutes!
+* HList
+ - Upgrade to closed type families
+ - No more upping =context-stack=!
+ - 15 secs, 9-10 in REPL!
+ - Still not great.
+ - =OverloadedRecordFields=, plz?
+* Why?
+ - Why?
+  - No fuss native executables
+    - Just throw something together
+  - Re-use intuition from OO toolkits
+  - Re-use documentation from FLTK
+ - Why not?
+  - Definitely /retro/-looking.
+    - Unlikely to change.
+  - Compile times are not good
+    - Very likely to change
+* Thanks!
+ - Thanks!
+ - Questions?
